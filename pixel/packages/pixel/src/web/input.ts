@@ -1,6 +1,7 @@
 import { clipboard, ClipboardItem, nativeImage } from "electron";
 import type { WebContents } from "electron";
 import type { EngineKeyEvent, PastedImage, PointerEvent, WheelEvent } from "../react";
+import { editingCommands } from "./editing-commands";
 
 export interface InputTarget {
   contents(): WebContents;
@@ -26,7 +27,7 @@ export class PageInput {
   private superHeld = false;
   private focusGate: Promise<void> | null = null;
 
-  constructor(target: InputTarget) {
+  constructor(target: InputTarget, private readonly noSuper = false) {
     this.target = target;
   }
 
@@ -171,7 +172,7 @@ export class PageInput {
       void this.dispatchEnter(event).catch(() => { });
       return;
     }
-    const commands = process.platform === "darwin" ? editingCommands(event) : null;
+    const commands = process.platform === "darwin" ? editingCommands(event, this.noSuper) : null;
     if (commands) {
       void this.dispatchEditing(event, commands).catch(() => { });
       return;
@@ -383,62 +384,6 @@ const EDITING_KEY_INFO: Record<string, { key: string; code: string; keyCode: num
   z: { key: "z", code: "KeyZ", keyCode: 90 },
 };
 
-function editingCommands(event: EngineKeyEvent): string[] | null {
-  const { key, mods } = event;
-  if (mods.ctrl) return controlEditingCommands(event);
-  const select = mods.shift ? "AndModifySelection" : "";
-  if (key === "backspace") {
-    if (mods.super) return ["deleteToBeginningOfLine"];
-    if (mods.alt) return ["deleteWordBackward"];
-    return null;
-  }
-  if (key === "b" && mods.alt && !mods.super) return [`moveWordLeft${select}`];
-  if (key === "f" && mods.alt && !mods.super) return [`moveWordRight${select}`];
-  if (key === "left" || key === "right") {
-    const end = key === "left" ? "moveToLeftEndOfLine" : "moveToRightEndOfLine";
-    const word = key === "left" ? "moveWordLeft" : "moveWordRight";
-    if (mods.super) return [`${end}${select}`];
-    if (mods.alt) return [`${word}${select}`];
-    return null;
-  }
-  if (key === "up" || key === "down") {
-    const edge = key === "up" ? "moveToBeginningOfDocument" : "moveToEndOfDocument";
-    if (mods.super && !mods.alt) return [`${edge}${select}`];
-    return null;
-  }
-  if (mods.super && !mods.alt && !mods.shift && key === "a") return ["selectAll"];
-  if (mods.super && !mods.alt && key === "z") return [mods.shift ? "redo" : "undo"];
-  if (mods.super && !mods.alt && !mods.shift && key === "c") return ["Copy"];
-  if (mods.super && !mods.alt && !mods.shift && key === "x") return ["Cut"];
-  return null;
-}
-
-// fixme this is left over and shouldn't exist 
-function controlEditingCommands(event: EngineKeyEvent): string[] | null {
-  const { key, mods } = event;
-  if (mods.super || mods.alt) return null;
-  const select = mods.shift ? "AndModifySelection" : "";
-  switch (key) {
-    case "a":
-      return [`moveToLeftEndOfLine${select}`];
-    case "e":
-      return [`moveToRightEndOfLine${select}`];
-    case "b":
-      return [`moveLeft${select}`];
-    case "f":
-      return [`moveRight${select}`];
-    case "d":
-      return ["deleteForward"];
-    case "k":
-      return ["deleteToEndOfLine"];
-    case "w":
-      return ["deleteWordBackward"];
-    case "u":
-      return ["deleteToBeginningOfLine"];
-    default:
-      return null;
-  }
-}
 
 export function electronKey(key: string) {
   const special: Record<string, string> = {

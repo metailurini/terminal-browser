@@ -41,6 +41,7 @@ export class DevtoolsWindow {
     dock: DevtoolsDock,
     background: string,
     renderScale: number,
+    noSuper: boolean,
     onAction: (action: DevtoolsAction) => void,
     onClosed: () => void,
   ) {
@@ -75,7 +76,7 @@ export class DevtoolsWindow {
       scale: () => this.layout.scale,
       focus: () => this.focus(),
       cdp: (method, params) => this.cdp(method, params),
-    });
+    }, noSuper);
     this.window.webContents.setFrameRate(frameRate());
     screen.on("display-added", this.onDisplayChange);
     screen.on("display-removed", this.onDisplayChange);

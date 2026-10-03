@@ -34,6 +34,7 @@ export class PopupWindow {
     size: { width: number; height: number },
     renderScale: number,
     scale: () => number,
+    noSuper: boolean,
     onChange: () => void,
     onClosed: () => void,
     openWindow?: (details: Electron.HandlerDetails) => Electron.WindowOpenHandlerResponse,
@@ -54,7 +55,7 @@ export class PopupWindow {
       scale,
       focus: () => this.focus(),
       cdp: (method, params) => this.cdp(method, params),
-    });
+    }, noSuper);
     const contents = window.webContents;
     contents.on("page-title-updated", (_event, title) => this.update({ title }));
     contents.on("did-navigate", (_event, url) => this.update({ url }));

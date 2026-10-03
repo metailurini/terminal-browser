@@ -74,6 +74,7 @@ export interface HostOptions {
   background: string;
   clipboardRead: boolean;
   proxy: string | null;
+  noSuper: boolean;
   browserWindowOptions: BrowserWindowOptions;
 }
 
@@ -91,6 +92,7 @@ export class PageHost {
   private contentFocused = false;
   private readonly input: PageInput;
   private readonly clipboardRead: boolean;
+  private readonly noSuper: boolean;
   private background: string;
   private pendingPopupSize: { width: number; height: number } | null = null;
   private readonly favicons = new FaviconCache();
@@ -133,6 +135,7 @@ export class PageHost {
     onState: (state: WebViewState) => void,
   ) {
     this.clipboardRead = options.clipboardRead;
+    this.noSuper = options.noSuper;
     this.browserWindowOptions = options.browserWindowOptions;
     this.surface = surface;
     this.bitmaps = new BitmapPresenter(surface);
@@ -158,7 +161,7 @@ export class PageHost {
         await this.attachCdp();
         return this.cdp(method, params);
       },
-    });
+    }, options.noSuper);
     this.window.webContents.setFrameRate(frameRate());
     this.window.on("closed", this.onWindowClosed);
     this.window.webContents.on("will-navigate", (event, url) => {
@@ -390,6 +393,7 @@ export class PageHost {
       dock,
       this.background,
       this.renderScale,
+      this.noSuper,
       (action) => this.onDevtoolsAction?.(action),
       () => {
         if (this.devtools !== devtools) return;
@@ -591,6 +595,7 @@ export class PageHost {
       size,
       this.renderScale,
       () => this.layout.scale,
+      this.noSuper,
       () => this.onPopupChange?.(),
       () => {
         const at = this.popups.indexOf(popup);

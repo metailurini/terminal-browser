@@ -42,7 +42,7 @@ export class ViewRegistry {
   constructor(
     readonly root: PixelRoot,
     readonly displayScale: number,
-    private readonly noSuper: boolean,
+    readonly noSuper: boolean,
     private readonly hooks: RegistryHooks,
   ) {
     this.colors = createStore<TerminalColors>(root.info.colors);
