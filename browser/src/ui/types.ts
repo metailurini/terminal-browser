@@ -174,6 +174,7 @@ export interface ChromeLayout {
     dock: "bottom" | "right";
   } | null;
   rem: number;
+  frame: number;
 }
 
 export interface TabView {
@@ -186,6 +187,7 @@ export interface TabView {
   proxy: string | null;
   preload: string | null;
   clipboardRead: boolean;
+  transparent: boolean;
 }
 
 export interface TabActions {

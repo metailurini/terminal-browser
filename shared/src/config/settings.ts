@@ -87,6 +87,14 @@ export const SETTINGS = {
     choices: onOff,
     inverted: true,
   }),
+  "window.transparent": setting({
+    group: "general",
+    label: "Transparent website backgrounds",
+    hint: "The terminal background will show through pages without a background color",
+    schema: z.enum(["on", "off"]),
+    default: "off",
+    choices: onOff,
+  }),
   "render.fps": setting({
     group: "advanced",
     label: "Frame rate",
