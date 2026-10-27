@@ -465,7 +465,9 @@ impl Terminal {
             Some("host") => FrameTransport::Host,
             _ => FrameTransport::Inline,
         };
-        terminal.image_id = state.image_id.unwrap_or_else(|| frame_image_id(true));
+        terminal.image_id = state
+            .image_id
+            .unwrap_or_else(|| frame_image_id(true, terminal.terminal_id));
         terminal.cell = state.cell;
         terminal.focused = state.focused;
         terminal.hosted = Some(state);
@@ -544,6 +546,7 @@ impl Terminal {
         wrapper: Wrapper,
         herdr_target: Option<crate::herdr::HerdrTarget>,
     ) -> Self {
+        let terminal_id = NEXT_TERMINAL_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         Self {
             io,
             saved,
@@ -563,7 +566,7 @@ impl Terminal {
             frame_seq: 0,
             payloads: Payloads::default(),
             wrapper,
-            image_id: frame_image_id(wrapper.relayed()),
+            image_id: frame_image_id(wrapper.relayed(), terminal_id),
             placeholders: None,
             placed_grid: None,
             identity: Identity::Unknown,
@@ -576,7 +579,7 @@ impl Terminal {
             wake_rx: None,
             waker: None,
             resize_slot: None,
-            terminal_id: NEXT_TERMINAL_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+            terminal_id,
             clipboard_data: false,
             clip_read: None,
             color_scheme_updates: false,
@@ -1569,14 +1572,18 @@ enum FrameTransport {
 static NEXT_TERMINAL_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 
-fn frame_image_id(relayed: bool) -> u32 {
+fn frame_image_id(relayed: bool, terminal_id: u64) -> u32 {
     if !relayed {
         return 1;
     }
-    match std::process::id() & 0xff_ffff {
-        0 | SHM_PROBE_ID => SHM_PROBE_ID + 1,
-        id => id,
+
+    const MAX_IMAGE_ID: u32 = 0xff_ffff;
+    const AVAILABLE_IMAGE_IDS: u64 = MAX_IMAGE_ID as u64 - 1;
+    let mut id = ((std::process::id() as u64 + terminal_id) % AVAILABLE_IMAGE_IDS) as u32 + 1;
+    if id >= SHM_PROBE_ID {
+        id += 1;
     }
+    id
 }
 
 
@@ -3058,10 +3065,11 @@ mod tty_tests {
         let (master_b, _slave_b, path_b) = open_pty();
         let _terminal_a = fake_terminal(&master_a);
         let _terminal_b = fake_terminal(&master_b);
-        let mut a = open(&path_a, Wrapper::None);
-        let mut b = open(&path_b, Wrapper::None);
+        let mut a = open(&path_a, Wrapper::Tmux);
+        let mut b = open(&path_b, Wrapper::Tmux);
 
         assert_ne!(a.terminal_id, b.terminal_id);
+        assert_ne!(a.image_id, b.image_id);
         assert_ne!(a.shm_name(0), b.shm_name(0));
 
         master_a.write_all(b"\x1b[97;;97u").unwrap();
